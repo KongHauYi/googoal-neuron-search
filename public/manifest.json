@@ -1,0 +1,40 @@
+
+{
+  "name": "Googoal - The Search Engine for Nerds",
+  "short_name": "Googoal",
+  "description": "A nerdy search engine built for actual web diggers — open-source, free, and powered by AI.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a0d2e",
+  "theme_color": "#6a0dad",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "sizes": "375x667",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}

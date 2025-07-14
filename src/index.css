@@ -35,8 +35,9 @@
   
   body {
     @apply bg-background text-foreground font-inter;
-    background: linear-gradient(135deg, #1a0d2e 0%, #16213e 50%, #0f172a 100%);
+    background: radial-gradient(ellipse at center, #4a0e4e 0%, #2d1b3d 30%, #1a0d2e 60%, #0f0a1a 100%);
     min-height: 100vh;
+    background-attachment: fixed;
   }
 }
 
@@ -59,11 +60,9 @@
     border: 1px solid rgba(106, 13, 173, 0.2);
   }
   
-  .highlight-yellow {
-    background: linear-gradient(120deg, #FFE600 0%, #FFE600 100%);
-    background-repeat: no-repeat;
-    background-size: 100% 0.3em;
-    background-position: 0 88%;
-    padding: 0 4px;
+  .glass-nav {
+    background: rgba(16, 12, 30, 0.8);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(106, 13, 173, 0.3);
   }
 }

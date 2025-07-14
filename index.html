@@ -8,6 +8,17 @@
     <meta name="description" content="A nerdy search engine built for actual web diggers — open-source, free, and powered by AI." />
     <meta name="author" content="Googoal" />
 
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#6a0dad" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Googoal" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+
     <meta property="og:title" content="Googoal - The Search Engine for Nerds" />
     <meta property="og:description" content="A nerdy search engine built for actual web diggers — open-source, free, and powered by AI." />
     <meta property="og:type" content="website" />
@@ -20,5 +31,18 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('SW registered: ', registration);
+            })
+            .catch((registrationError) => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
