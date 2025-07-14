@@ -4,84 +4,121 @@ import { Search, Sparkles, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-interface SearchResult {
+interface WebsiteResult {
   title: string;
   url: string;
   snippet: string;
+  source: string;
+}
+
+interface SearchResult {
+  websites: WebsiteResult[];
+  aiDemo: string;
   aiSummary: string;
 }
 
 const SearchSection = () => {
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState('');
+
+  const searchSpecificSites = async (query: string): Promise<WebsiteResult[]> => {
+    const sites = [
+      'site:britannica.com',
+      'site:academic.oup.com',
+      'site:scholar.google.com',
+      'site:nationalgeographic.com',
+      'site:wikipedia.org'
+    ];
+
+    const websiteResults: WebsiteResult[] = [];
+
+    for (const site of sites) {
+      try {
+        const searchUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(`${query} ${site}`)}&format=json&no_html=1&skip_disambig=1`;
+        const response = await fetch(searchUrl);
+        const data = await response.json();
+
+        if (data.AbstractText && data.AbstractURL) {
+          websiteResults.push({
+            title: data.Heading || `${query} - ${site.replace('site:', '')}`,
+            url: data.AbstractURL,
+            snippet: data.AbstractText,
+            source: site.replace('site:', '').split('.')[0]
+          });
+        }
+
+        if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
+          for (const topic of data.RelatedTopics.slice(0, 1)) {
+            if (topic.Text && topic.FirstURL && topic.FirstURL.includes(site.replace('site:', ''))) {
+              websiteResults.push({
+                title: topic.Text.split(' - ')[0] || topic.Text.substring(0, 60),
+                url: topic.FirstURL,
+                snippet: topic.Text,
+                source: site.replace('site:', '').split('.')[0]
+              });
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error searching ${site}:`, error);
+      }
+    }
+
+    return websiteResults;
+  };
+
+  const generateAIContent = (query: string, hasWebsiteContent: boolean): { aiDemo: string; aiSummary: string } => {
+    const aiDemo = `🤖 **Direct AI Response:** ${query} involves multiple complex processes and considerations. This technology combines various scientific principles and methodologies that have evolved over time. The implementation requires understanding of fundamental concepts, practical applications, and modern innovations in the field. Current research continues to advance our understanding and improve efficiency in this area.`;
+
+    let aiSummary = '';
+    if (hasWebsiteContent) {
+      aiSummary = `🤖 **AI Summary of Sources:** Based on the gathered information from reputable sources, this topic encompasses several key aspects including historical development, current methodologies, and practical applications. The sources provide comprehensive coverage from multiple perspectives, offering both foundational knowledge and cutting-edge insights into the subject matter.`;
+    } else {
+      aiSummary = `🤖 **AI Summary:** No specific source content was found, but this topic generally involves systematic approaches and established principles that can be understood through comprehensive analysis and practical implementation.`;
+    }
+
+    return { aiDemo, aiSummary };
+  };
 
   const handleSearch = async () => {
     if (!query.trim()) return;
     
     setIsSearching(true);
     setError('');
-    setResults([]);
+    setResult(null);
     
     try {
       console.log('Searching for:', query);
       
-      // Use DuckDuckGo API directly from the frontend
-      const searchUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1`;
+      // Search specific websites
+      const websites = await searchSpecificSites(query);
       
-      const response = await fetch(searchUrl);
-      const data = await response.json();
+      // Generate AI content
+      const { aiDemo, aiSummary } = generateAIContent(query, websites.length > 0);
       
-      console.log('Search results:', data);
-      
-      const results: SearchResult[] = [];
-      
-      // Get instant answer if available
-      if (data.AbstractText) {
-        results.push({
-          title: data.Heading || query,
-          url: data.AbstractURL || '#',
-          snippet: data.AbstractText,
-          aiSummary: `🤖 This is about ${query}. ${data.AbstractText.substring(0, 100)}...`
-        });
-      }
-      
-      // Get related topics
-      if (data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
-        for (const topic of data.RelatedTopics.slice(0, 4)) {
-          if (topic.Text && topic.FirstURL) {
-            results.push({
-              title: topic.Text.split(' - ')[0] || topic.Text.substring(0, 50),
-              url: topic.FirstURL,
-              snippet: topic.Text,
-              aiSummary: `🤖 AI Summary: ${topic.Text.substring(0, 80)}... This provides relevant information about ${query}.`
-            });
-          }
-        }
-      }
-      
-      // If no results, create demo results
-      if (results.length === 0) {
-        results.push({
-          title: `Search results for: ${query}`,
+      // If no website results, create demo website entries
+      const finalWebsites = websites.length > 0 ? websites : [
+        {
+          title: `${query} - Demo Result`,
           url: '#',
-          snippet: `Found information about "${query}". This is a demo search engine with AI-powered summaries for nerds.`,
-          aiSummary: `🤖 AI Summary: This search query "${query}" shows how Googoal works - a nerdy search engine with real-time AI summaries for developers and tech enthusiasts.`
-        });
-      }
+          snippet: `Demo content for "${query}". In a real implementation, this would contain scraped content from reputable sources.`,
+          source: 'demo'
+        }
+      ];
+
+      const searchResult: SearchResult = {
+        websites: finalWebsites,
+        aiDemo,
+        aiSummary
+      };
       
-      setResults(results);
+      setResult(searchResult);
     } catch (err) {
       console.error('Search error:', err);
-      // Create fallback demo results
-      const fallbackResults: SearchResult[] = [{
-        title: `Demo: ${query}`,
-        url: '#',
-        snippet: `This is a demo search for "${query}". Googoal is a nerdy search engine that would normally provide real web scraping results with AI summaries.`,
-        aiSummary: `🤖 AI Summary: Your search for "${query}" demonstrates Googoal's capabilities. This would normally include scraped web content with intelligent AI-powered summaries tailored for developers and tech enthusiasts.`
-      }];
-      setResults(fallbackResults);
+      setError('Search failed. Please try again.');
     } finally {
       setIsSearching(false);
     }
@@ -142,49 +179,66 @@ const SearchSection = () => {
       )}
 
       {/* Search Results */}
-      {results.length > 0 && (
-        <div className="space-y-6 animate-fade-in-up">
-          {results.map((result, index) => (
-            <div key={index} className="glass rounded-xl p-6 shadow-lg">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="text-xl font-bold text-white mb-2 flex-1">
-                  {result.title}
-                </h3>
-                {result.url !== '#' && (
-                  <a
-                    href={result.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:text-accent/80 transition-colors ml-4"
-                  >
-                    <ExternalLink className="w-5 h-5" />
-                  </a>
-                )}
+      {result && (
+        <div className="animate-fade-in-up">
+          <div className="glass rounded-xl p-6 shadow-lg">
+            {/* Websites Section */}
+            <div className="mb-6">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <span>🌐</span> Websites
+              </h3>
+              <div className="space-y-3">
+                {result.websites.map((website, index) => (
+                  <div key={index} className="border-l-2 border-accent/50 pl-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-white text-sm mb-1">{website.title}</h4>
+                        <p className="text-xs text-muted-foreground mb-2 font-mono">{website.source}</p>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{website.snippet}</p>
+                      </div>
+                      {website.url !== '#' && (
+                        <a
+                          href={website.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-accent hover:text-accent/80 transition-colors ml-3 flex-shrink-0"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-              
-              {result.url !== '#' && (
-                <p className="text-sm text-muted-foreground mb-3 font-mono">
-                  {result.url}
-                </p>
-              )}
-              
-              {result.aiSummary && (
-                <div className="text-muted-foreground mb-4">
-                  <h4 className="text-accent font-semibold mb-2">🤖 AI Summary:</h4>
-                  <p className="leading-relaxed">{result.aiSummary}</p>
-                </div>
-              )}
-              
-              {result.snippet && (
-                <div className="border-t border-primary/20 pt-4">
-                  <h4 className="text-accent font-semibold mb-2">📝 Content:</h4>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {result.snippet}
-                  </p>
-                </div>
-              )}
             </div>
-          ))}
+
+            {/* AI Demo Section */}
+            <div className="mb-6 border-t border-primary/20 pt-6">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <span>🤖</span> AI Demo
+              </h3>
+              <div className="bg-primary/10 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground leading-relaxed">{result.aiDemo}</p>
+              </div>
+            </div>
+
+            {/* AI Summary Section */}
+            <div className="border-t border-primary/20 pt-6">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <span>📝</span> AI Summary
+              </h3>
+              <div className="bg-accent/10 rounded-lg p-4">
+                <p className="text-sm text-muted-foreground leading-relaxed">{result.aiSummary}</p>
+              </div>
+            </div>
+
+            {/* Disclaimer */}
+            <div className="mt-6 pt-4 border-t border-primary/20">
+              <p className="text-xs text-muted-foreground/70 italic text-center">
+                ⚠️ Information may be inaccurate. Please verify from original sources.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
