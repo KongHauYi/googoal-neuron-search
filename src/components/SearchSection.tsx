@@ -7,8 +7,8 @@ import { Input } from '@/components/ui/input';
 interface SearchResult {
   title: string;
   url: string;
-  summary: string;
-  content: string;
+  snippet: string;
+  aiSummary: string;
 }
 
 const SearchSection = () => {
@@ -25,7 +25,9 @@ const SearchSection = () => {
     setResults([]);
     
     try {
-      const response = await fetch('/api/search', {
+      console.log('Searching for:', query);
+      
+      const response = await fetch('http://localhost:5000/api/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -34,14 +36,20 @@ const SearchSection = () => {
       });
       
       if (!response.ok) {
-        throw new Error('Search failed');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log('Search results:', data);
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
       setResults(data.results || []);
     } catch (err) {
-      setError('Search failed. Please try again.');
       console.error('Search error:', err);
+      setError('Search failed. Make sure the Python backend is running on port 5000.');
     } finally {
       setIsSearching(false);
     }
@@ -58,7 +66,7 @@ const SearchSection = () => {
       <div className="text-center mb-8">
         <div className="flex items-center justify-center gap-2 text-muted-foreground mb-4">
           <Sparkles className="w-4 h-4 text-accent" />
-          <span className="font-mono text-sm">AI-powered web scraping</span>
+          <span className="font-mono text-sm">AI-powered web search</span>
           <Sparkles className="w-4 h-4 text-accent" />
         </div>
       </div>
@@ -69,7 +77,7 @@ const SearchSection = () => {
             <div className="flex-1">
               <Input
                 type="text"
-                placeholder="Enter your search query or website URL..."
+                placeholder="Enter your search query..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -93,8 +101,11 @@ const SearchSection = () => {
       </div>
 
       {error && (
-        <div className="text-center text-red-400 mb-4">
-          {error}
+        <div className="text-center text-red-400 mb-4 p-4 glass rounded-xl">
+          <p>{error}</p>
+          <p className="text-sm mt-2 text-muted-foreground">
+            Make sure to run: <code className="bg-black/20 px-2 py-1 rounded">python src/api/search.py</code>
+          </p>
         </div>
       )}
 
@@ -107,27 +118,36 @@ const SearchSection = () => {
                 <h3 className="text-xl font-bold text-white mb-2 flex-1">
                   {result.title}
                 </h3>
-                <a
-                  href={result.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-accent hover:text-accent/80 transition-colors ml-4"
-                >
-                  <ExternalLink className="w-5 h-5" />
-                </a>
+                {result.url !== '#' && (
+                  <a
+                    href={result.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:text-accent/80 transition-colors ml-4"
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                  </a>
+                )}
               </div>
-              <p className="text-sm text-muted-foreground mb-3 font-mono">
-                {result.url}
-              </p>
-              <div className="text-muted-foreground mb-4">
-                <h4 className="text-accent font-semibold mb-2">AI Summary:</h4>
-                <p className="leading-relaxed">{result.summary}</p>
-              </div>
-              {result.content && (
+              
+              {result.url !== '#' && (
+                <p className="text-sm text-muted-foreground mb-3 font-mono">
+                  {result.url}
+                </p>
+              )}
+              
+              {result.aiSummary && (
+                <div className="text-muted-foreground mb-4">
+                  <h4 className="text-accent font-semibold mb-2">🤖 AI Summary:</h4>
+                  <p className="leading-relaxed">{result.aiSummary}</p>
+                </div>
+              )}
+              
+              {result.snippet && (
                 <div className="border-t border-primary/20 pt-4">
-                  <h4 className="text-accent font-semibold mb-2">Content Preview:</h4>
+                  <h4 className="text-accent font-semibold mb-2">📝 Content:</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    {result.content.substring(0, 500)}...
+                    {result.snippet}
                   </p>
                 </div>
               )}

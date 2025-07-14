@@ -5,35 +5,36 @@
 - Python 3.8 or higher
 - pip package manager
 
-## Installation
+## Quick Start
 
-1. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-2. Install dependencies:
+1. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Run the Flask server:
+2. **Run the backend:**
 ```bash
 python src/api/search.py
 ```
 
 The backend will run on `http://localhost:5000`
 
-## API Endpoints
+## How it works
+
+The backend uses:
+- **DuckDuckGo API** for search results (no API key needed)
+- **OpenAI GPT-3.5-turbo** for AI summaries
+- **Flask** with CORS enabled for the frontend
+
+## API Endpoint
 
 ### POST /api/search
-Search and scrape web content with AI summaries.
+Search and get AI-powered summaries.
 
 **Request:**
 ```json
 {
-  "query": "your search query or URL"
+  "query": "your search query"
 }
 ```
 
@@ -44,15 +45,23 @@ Search and scrape web content with AI summaries.
     {
       "title": "Page Title",
       "url": "https://example.com",
-      "summary": "AI-generated summary",
-      "content": "Content preview..."
+      "snippet": "Content snippet...",
+      "aiSummary": "AI-generated summary"
     }
   ]
 }
 ```
 
-## Environment Variables
-Set your OpenAI API key in the search.py file or as an environment variable:
+## Testing
+1. Start the backend: `python src/api/search.py`
+2. Test with curl:
 ```bash
-export OPENAI_API_KEY="your-api-key"
+curl -X POST http://localhost:5000/api/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "artificial intelligence"}'
 ```
+
+## Notes
+- The OpenAI API key is embedded in the code for demo purposes
+- DuckDuckGo API is used for search (free, no rate limits)
+- CORS is enabled for frontend integration
