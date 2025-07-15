@@ -14,18 +14,18 @@ const SearchSection = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState('');
-  const [apiKey, setApiKey] = useState('');
+  const apiKey = "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";
 
-  const callPerplexityAPI = async (message: string, systemPrompt: string): Promise<string> => {
+  const callOpenAIAPI = async (message: string, systemPrompt: string): Promise<string> => {
     try {
-      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'llama-3.1-sonar-large-128k-online',
+          model: 'gpt-4.1-2025-04-14',
           messages: [
             {
               role: 'system',
@@ -37,14 +37,7 @@ const SearchSection = () => {
             }
           ],
           temperature: 0.2,
-          top_p: 0.9,
           max_tokens: 2000,
-          return_images: false,
-          return_related_questions: false,
-          search_domain_filter: ['wikipedia.org', 'britannica.com', '.gov', '.edu', '.org'],
-          search_recency_filter: 'month',
-          frequency_penalty: 1,
-          presence_penalty: 0
         }),
       });
 
@@ -55,42 +48,30 @@ const SearchSection = () => {
       const data = await response.json();
       return data.choices[0]?.message?.content || 'Unable to generate response.';
     } catch (error) {
-      console.error('Perplexity API error:', error);
+      console.error('OpenAI API error:', error);
       throw error;
     }
   };
 
   const generateAISummary = async (query: string): Promise<string> => {
-    if (!apiKey) {
-      throw new Error('API key required');
-    }
-
-    const systemPrompt = `You are a research assistant that creates comprehensive summaries from web sources. Search for information about the topic from trusted sources like Wikipedia, Britannica, .gov, .edu, and .org domains. Create a detailed summary that is exactly 140-170 words. Focus on factual, accurate information from reputable sources.`;
+    const systemPrompt = `You are a research assistant that creates comprehensive summaries. Research the topic from trusted sources like Wikipedia, Britannica, .gov, .edu, and .org domains. Create a detailed summary that is exactly 140-170 words. Focus on factual, accurate information from reputable sources.`;
     
     const userPrompt = `Research and summarize information about: ${query}. Provide a comprehensive summary of 140-170 words based on trusted sources.`;
     
-    return await callPerplexityAPI(userPrompt, systemPrompt);
+    return await callOpenAIAPI(userPrompt, systemPrompt);
   };
 
   const generateAIDemo = async (query: string): Promise<string> => {
-    if (!apiKey) {
-      throw new Error('API key required');
-    }
-
     const systemPrompt = `You are an AI assistant providing direct, accurate responses. Be informative and factual. Provide a comprehensive but concise response about the topic.`;
     
     const userPrompt = `Provide a direct, informative response about: ${query}. Be accurate and comprehensive.`;
     
-    return await callPerplexityAPI(userPrompt, systemPrompt);
+    return await callOpenAIAPI(userPrompt, systemPrompt);
   };
 
   const handleSearch = async () => {
     if (!query.trim()) return;
     
-    if (!apiKey.trim()) {
-      setError('Please enter your Perplexity API key to use real AI responses.');
-      return;
-    }
     
     setIsSearching(true);
     setError('');
@@ -137,16 +118,6 @@ const SearchSection = () => {
 
       <div className="relative max-w-2xl mx-auto mb-8">
         <div className="glass rounded-2xl p-4 sm:p-6 shadow-2xl">
-          <div className="flex flex-col gap-4 mb-4">
-            <Input
-              type="password"
-              placeholder="Enter your Perplexity API key..."
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              className="bg-transparent border-accent/30 focus:border-accent text-white placeholder:text-muted-foreground text-sm h-10 font-mono"
-              disabled={isSearching}
-            />
-          </div>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <Input
@@ -177,11 +148,6 @@ const SearchSection = () => {
       {error && (
         <div className="text-center text-red-400 mb-4 p-4 glass rounded-xl">
           <p>{error}</p>
-          {!apiKey && (
-            <p className="text-sm mt-2 text-muted-foreground">
-              Get your API key from: <a href="https://perplexity.ai" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">perplexity.ai</a>
-            </p>
-          )}
         </div>
       )}
 
