@@ -14,72 +14,83 @@ const SearchSection = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState('');
+  const [apiKey, setApiKey] = useState('');
 
-  const scrapeWebsites = async (query: string): Promise<string> => {
+  const callPerplexityAPI = async (message: string, systemPrompt: string): Promise<string> => {
     try {
-      // Use Google Custom Search API to find trusted sites
-      const trustedDomains = ['wikipedia.org', 'britannica.com', '.gov', '.edu', '.org'];
-      const searchQueries = trustedDomains.map(domain => 
-        `${query} site:${domain}`
-      );
-
-      let allContent = '';
-      let foundSites = 0;
-
-      for (const searchQuery of searchQueries) {
-        if (foundSites >= 10) break;
-
-        try {
-          // Simulate finding URLs from trusted sources
-          const mockUrls = [
-            `https://en.wikipedia.org/wiki/${encodeURIComponent(query.replace(/\s+/g, '_'))}`,
-            `https://www.britannica.com/search?query=${encodeURIComponent(query)}`,
-            `https://www.nationalgeographic.com/search?q=${encodeURIComponent(query)}`,
-          ];
-
-          for (const url of mockUrls.slice(0, 3)) {
-            if (foundSites >= 10) break;
-            
-            try {
-              // In a real implementation, you would scrape the actual content
-              // For now, we'll generate realistic content based on the query
-              const mockContent = `Content from ${url}: ${query} is a topic that involves various scientific, historical, and practical aspects. Research from this source provides detailed insights into the mechanisms, applications, and significance of this subject matter. The information covers both theoretical foundations and practical implementations that are relevant to understanding this field comprehensively.`;
-              
-              allContent += mockContent + ' ';
-              foundSites++;
-            } catch (error) {
-              console.error(`Error scraping ${url}:`, error);
+      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-sonar-large-128k-online',
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: message
             }
-          }
-        } catch (error) {
-          console.error(`Error with search query ${searchQuery}:`, error);
-        }
+          ],
+          temperature: 0.2,
+          top_p: 0.9,
+          max_tokens: 2000,
+          return_images: false,
+          return_related_questions: false,
+          search_domain_filter: ['wikipedia.org', 'britannica.com', '.gov', '.edu', '.org'],
+          search_recency_filter: 'month',
+          frequency_penalty: 1,
+          presence_penalty: 0
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status}`);
       }
 
-      return allContent || `Comprehensive information about ${query} from trusted academic and educational sources.`;
+      const data = await response.json();
+      return data.choices[0]?.message?.content || 'Unable to generate response.';
     } catch (error) {
-      console.error('Error scraping websites:', error);
-      return `Research findings about ${query} from reputable sources including educational institutions and established encyclopedias.`;
+      console.error('Perplexity API error:', error);
+      throw error;
     }
   };
 
-  const generateAISummary = async (scrapedContent: string, query: string): Promise<string> => {
-    // Simulate OpenAI API call to summarize the scraped content
-    const words = scrapedContent.split(' ');
-    const targetWords = Math.floor(Math.random() * 31) + 140; // 140-170 words
+  const generateAISummary = async (query: string): Promise<string> => {
+    if (!apiKey) {
+      throw new Error('API key required');
+    }
+
+    const systemPrompt = `You are a research assistant that creates comprehensive summaries from web sources. Search for information about the topic from trusted sources like Wikipedia, Britannica, .gov, .edu, and .org domains. Create a detailed summary that is exactly 140-170 words. Focus on factual, accurate information from reputable sources.`;
     
-    // Create a realistic summary from the scraped content
-    const summary = `Based on comprehensive research from trusted educational and academic sources, ${query} represents a multifaceted subject with significant implications across various disciplines. The aggregated content from leading institutions and encyclopedic sources reveals that this topic encompasses fundamental principles that have evolved through rigorous scientific inquiry and practical application. Contemporary understanding demonstrates the interconnected nature of theoretical frameworks and real-world implementations, highlighting the importance of evidence-based approaches in advancing knowledge. Research findings consistently indicate that effective comprehension requires consideration of multiple perspectives and methodological approaches. The synthesis of information from authoritative sources provides valuable insights into both historical development and current applications, offering a foundation for continued exploration and understanding of this complex subject matter.`;
+    const userPrompt = `Research and summarize information about: ${query}. Provide a comprehensive summary of 140-170 words based on trusted sources.`;
     
-    return summary;
+    return await callPerplexityAPI(userPrompt, systemPrompt);
   };
 
-  const generateAIDemo = (query: string): string => {
-    return `Direct AI analysis indicates that ${query} involves sophisticated processes requiring systematic understanding. The fundamental concepts encompass both theoretical foundations and practical implementations that have evolved through extensive research and development. Modern approaches integrate multiple methodologies to achieve optimal results, demonstrating the importance of comprehensive analysis in this field. Current innovations continue to expand possibilities while maintaining adherence to established principles and best practices.`;
+  const generateAIDemo = async (query: string): Promise<string> => {
+    if (!apiKey) {
+      throw new Error('API key required');
+    }
+
+    const systemPrompt = `You are an AI assistant providing direct, accurate responses. Be informative and factual. Provide a comprehensive but concise response about the topic.`;
+    
+    const userPrompt = `Provide a direct, informative response about: ${query}. Be accurate and comprehensive.`;
+    
+    return await callPerplexityAPI(userPrompt, systemPrompt);
   };
 
   const handleSearch = async () => {
     if (!query.trim()) return;
+    
+    if (!apiKey.trim()) {
+      setError('Please enter your Perplexity API key to use real AI responses.');
+      return;
+    }
     
     setIsSearching(true);
     setError('');
@@ -88,12 +99,11 @@ const SearchSection = () => {
     try {
       console.log('Searching for:', query);
       
-      // Scrape content from trusted websites
-      const scrapedContent = await scrapeWebsites(query);
-      
-      // Generate AI demo and summary
-      const aiDemo = generateAIDemo(query);
-      const aiSummary = await generateAISummary(scrapedContent, query);
+      // Generate AI demo and summary using real APIs
+      const [aiDemo, aiSummary] = await Promise.all([
+        generateAIDemo(query),
+        generateAISummary(query)
+      ]);
 
       const searchResult: SearchResult = {
         aiDemo,
@@ -103,7 +113,7 @@ const SearchSection = () => {
       setResult(searchResult);
     } catch (err) {
       console.error('Search error:', err);
-      setError('Search failed. Please try again.');
+      setError('Search failed. Please check your API key and try again.');
     } finally {
       setIsSearching(false);
     }
@@ -127,6 +137,16 @@ const SearchSection = () => {
 
       <div className="relative max-w-2xl mx-auto mb-8">
         <div className="glass rounded-2xl p-4 sm:p-6 shadow-2xl">
+          <div className="flex flex-col gap-4 mb-4">
+            <Input
+              type="password"
+              placeholder="Enter your Perplexity API key..."
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="bg-transparent border-accent/30 focus:border-accent text-white placeholder:text-muted-foreground text-sm h-10 font-mono"
+              disabled={isSearching}
+            />
+          </div>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <Input
@@ -157,9 +177,11 @@ const SearchSection = () => {
       {error && (
         <div className="text-center text-red-400 mb-4 p-4 glass rounded-xl">
           <p>{error}</p>
-          <p className="text-sm mt-2 text-muted-foreground">
-            Make sure to run: <code className="bg-black/20 px-2 py-1 rounded">python src/api/search.py</code>
-          </p>
+          {!apiKey && (
+            <p className="text-sm mt-2 text-muted-foreground">
+              Get your API key from: <a href="https://perplexity.ai" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">perplexity.ai</a>
+            </p>
+          )}
         </div>
       )}
 
